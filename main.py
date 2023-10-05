@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 import requests
 from bs4 import BeautifulSoup
-import execjs
-
+import json 
 app = FastAPI()
 
 @app.get("/")
@@ -24,8 +23,7 @@ async def get_pnr(pnr_number: int, is_json: bool = True):
 
         da = BeautifulSoup(html, 'html.parser').find_all("script")[13].text
 
-        data = json.loads(da.split("if (data === null)", 1)[0].split("data =")[-1].strip()[:-1])
-
+        data = json.loads(''.join([c for i, c in enumerate((da.split("if (data === null)", 1)[0].split("data =")[-1]).strip()) if i < len((da.split("if (data === null)", 1)[0].split("data =")[-1].strip())) - 1]))
         del data['ShowBlaBlaAd']
         del data['ShowCab']
         del data['Ads']
