@@ -24,8 +24,7 @@ async def get_pnr(pnr_number: int, is_json: bool = True):
 
         da = BeautifulSoup(html, 'html.parser').find_all("script")[13].text
 
-        js_code = da.split("if (data === null)", 1)[0].replace("$", "")
-        data = execjs.compile(js_code).eval("data")
+        data = json.loads(da.split("if (data === null)", 1)[0].split("data =")[-1].strip()[:-1])
 
         del data['ShowBlaBlaAd']
         del data['ShowCab']
