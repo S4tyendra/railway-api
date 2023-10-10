@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 import requests
 from bs4 import BeautifulSoup
 import json 
+from datetime import datetime
 app = FastAPI()
 
 @app.get("/")
@@ -85,6 +86,56 @@ async def get_pnr(pnr_number: int, is_json: bool = True):
             return HTMLResponse(content=html_template)
     except requests.exceptions.RequestException as e:
         return HTMLResponse(content=f"<h1>Error</h1><p>An error occurred: {str(e)}</p>", status_code=500)
+
+
+
+def live_status(train,date):
+
+        url = f"https://www.confirmtkt.com/train-running-status/{train}?Date={date}"
+        headers = {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Cache-Control": "no-cache",
+    "Dnt": "1",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.1234.0 Safari/537.36"
+}
+
+        resp = requests.get(url, headers=headers)
+        resp.raise_for_status()
+        html = resp.text
+        soup1 = BeautifulSoup(html, 'html.parser').find_all("script", {"type": "text/javascript"})[2].text
+        update_message = BeautifulSoup(html,'html.parser').find_all("div",{"class":"train-update__status"})[0].text.strip()
+        # print(update_message)
+        csc = str(soup1.split('currentStnCode = "')[1].split('";')[0])
+        css = str(soup1.split('currentStnName = "')[1].split('";')[0])
+        da = json.loads(soup1.split("var data = ",1)[1].split("if (data)")[0].strip()[:-1])
+        src = f"{da['SourceCode']} - {da['Source']}"
+        dest = f"{da['DestinationCode']} - {da['Destination']}"
+        schedule = da['Schedule']
+        return {
+            'message':update_message,
+            'CurrentS':csc,
+            'CurrentSName': css,
+            'src': src,
+            'dest':dest,
+            'schedule':schedule
+
+        }
+
+@app.get("/train-status")
+async def get_train_status(train: str, date: str):
+    try:
+        train_status = live_status(train, date)
+        return train_status
+    except Exception as e:
+        return {"error": str(e)}
+
 
 if __name__ == "__main__":
     import uvicorn
