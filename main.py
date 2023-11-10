@@ -1,10 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 import requests
 from bs4 import BeautifulSoup
 import json 
 from datetime import datetime
+import logging
+
+logging.basicConfig(filename="app.log", level=logging.DEBUG)
+
 app = FastAPI()
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logging.info(f"Received request: {request.method} {request.url}")
+    response = await call_next(request)
+    logging.info(f"Response: {response.status_code}")
+    return response
 
 @app.get("/")
 async def redirect_to_github():
@@ -135,8 +146,18 @@ async def get_train_status(train: str, date: str):
         return train_status
     except Exception as e:
         return {"error": str(e)}
+    
+    
+@app.get("/logs", response_class=HTMLResponse)
+async def get_logs():
+    try:
+        with open("app.log", "r") as file:
+            logs = file.read()
+        return HTMLResponse(content=f"<pre>{logs}</pre>")
+    except Exception as e:
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
